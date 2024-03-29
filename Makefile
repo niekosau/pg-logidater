@@ -23,7 +23,7 @@ pytest:
 
 run:
 	poetry install
-	${PYTHON} pg_logidater/cli.py $(args)
+	sudo ${PYTHON} pg_logidater/cli.py $(args)
 
 build_wheel:
 	${PYTHON} setup.py bdist_wheel
