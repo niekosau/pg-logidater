@@ -1,43 +1,23 @@
 from logging import getLogger
 from pg_logidater.utils import SqlConn, ServerConn
-from sys import exit
-from math import floor
 from os import path
 from pg_logidater.exceptions import (
-    PsqlConnectionError,
+    ReplicaPaused
 )
 
 _logger = getLogger(__name__)
 
 
-def replica_check(psql: SqlConn, **kwargs) -> None:
+def pause_replica(psql: SqlConn) -> None:
+    _logger.info("Pausing replica")
     if psql.is_replica_pause():
-        _logger.critical("Replica paused!!! We need up to date replica")
-        # raise ReplicaAlreadyPaused
         psql.resume_replica()
+        raise ReplicaPaused
+    psql.pause_replica()
 
 
-def replica(**kwargs) -> None:
-    host = kwargs["replica"]
-    database = kwargs["database"]["name"]
-    try:
-        psql = SqlConn(host, database)
-        replica_check(psql, **kwargs)
-        psql.pause_replica()
-        if not psql.is_replica_pause():
-            _logger.critical("Unable to pause replica!!!, ABORTING")
-            exit(1)
-        psql_version = floor(psql.server_version())
-        kwargs.update({"psql_version": psql_version})
-    except PsqlConnectionError:
-        _logger.critical(f"UNable to connect to {host} with database {database}")
-        exit(1)
-    replica_app, replica_slot = replica_info(host, psql_version)
-    kwargs["replica_info"]["app"] = replica_app
-    kwargs["replica_info"]["slot"] = replica_slot
-
-
-def replica_info(host, psql_version, user="postgres") -> None:
+def replica_info(host, user="postgres") -> (str, str):
+    _logger.info("Collecting replica info")
     with ServerConn(host, user) as ssh:
         cli = "awk -F '=' /PGDATA=/'{print $NF}' .bash_profile"
         _logger.debug(f"Executing: {cli}")

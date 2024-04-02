@@ -1,27 +1,104 @@
-from logging import getLogger, basicConfig, DEBUG
 import os
 import pwd
+import argparse
+from logging import getLogger
 from sys import exit
-from pg_logidater.master import master
-from pg_logidater.replica import replica
-from pg_logidater.tartget import target
+from pg_logidater.exceptions import (
+    PsqlConnectionError,
+)
+from pg_logidater.utils import (
+    SqlConn,
+    setup_logging,
+    prepare_directories
+)
+from pg_logidater.master import (
+    master_prepare,
+    master_checks
+)
+from pg_logidater.replica import (
+    pause_replica,
+    replica_info,
+)
+from pg_logidater.tartget import (
+    create_subscriber,
+    create_database,
+    target_check,
+    sync_roles,
+    sync_database,
+    get_replica_position
+)
 
-CURREN_MASTER = "10.123.9.11"
-CURRENT_REPLICA = "10.123.9.12"
-NEW_MASTER = "10.123.9.13"
-USER = "repmgr"
-SLOT_NAME = "test_from_py_script"
-PUB_NAME = "vu_bitbucket_test_script"
-LOG_FORMAT = "[%(module)-8s:%(funcName)-20s| %(levelname)-8s] %(message)-40s"
 
-
-basicConfig(level=DEBUG, format=LOG_FORMAT)
 _logger = getLogger(__name__)
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "-u",
+    "--user",
+    type=str,
+    help="User for running application, default=postgres",
+    default="postgres"
+)
+parser.add_argument(
+    "--app-tmp-dir",
+    help="Temp directory to store dumps",
+    type=str,
+    default="/tmp/pg-logidater/tmp"
+)
+parser.add_argument(
+    "--app-log-dir",
+    help="Cli output log dir, default: /tmp/pg-logidater/log",
+    type=str,
+    default="/tmp/pg-logidater/log"
+)
+parser.add_argument(
+    "--save-log",
+    help="Save pg-logidater log to file",
+    action="store_true"
+)
+log_level = parser.add_mutually_exclusive_group()
+log_level.add_argument(
+    "--log-level",
+    type=str,
+    choices=["debug", "info", "warning", "eror", "critical"],
+    help="Log level for console outpu, default=info",
+    default="info"
+)
+log_level.add_argument(
+    "-d",
+    "--debug",
+    action="store_true"
+)
+log_level.add_argument(
+    "--verbose",
+    action="store_true"
+)
+subparser = parser.add_subparsers(dest="cli")
 
 
-def drop_privileges(user="postgres") -> None:
+def argument(*name_of_flags, **kwargs) -> list:
+    return (list(name_of_flags), kwargs)
+
+
+def cli(args=[], parent=subparser, cmd_aliases=None):
+    if cmd_aliases is None:
+        cmd_aliases = []
+
+        def decorator(func):
+            parser = parent.add_parser(
+                func.__name__.replace("_", "-"),
+                description=func.__doc__,
+                aliases=cmd_aliases
+            )
+            for arg in args:
+                parser.add_argument(*arg[0], **arg[1])
+            parser.set_defaults(func=func)
+        return decorator
+
+
+def drop_privileges(user) -> None:
+    _logger.info(f"Chnaging user to: {user}")
     try:
-        change_user = pwd.getpwnam('postgres')
+        change_user = pwd.getpwnam(user)
         os.setgid(change_user.pw_gid)
         os.setuid(change_user.pw_uid)
         os.environ["HOME"] = change_user.pw_dir
@@ -33,25 +110,120 @@ def drop_privileges(user="postgres") -> None:
         exit(1)
 
 
-def main() -> None:
-    database = {
-        "name": "bitbucket",
-    }
-    replica_info = {}
-    kwargs = {
-        "master": CURREN_MASTER,
-        "replica": CURRENT_REPLICA,
-        "user": USER,
-        "slot_name": SLOT_NAME,
-        "pub_name": PUB_NAME,
-        "database": database,
-        "replica_info": replica_info
-    }
-    master(**kwargs)
-    replica(**kwargs)
-    target(**kwargs)
+@cli(
+    [
+        argument(
+            "--database",
+            help="Database to setup logical replication",
+            required=True
+        ),
+        argument(
+            "--master-host",
+            help="Master host from which to setup replica",
+            type=str,
+        ),
+        argument(
+            "--replica-host",
+            help="Replica host were to take dump",
+            type=str,
+            required=True
+        ),
+        argument(
+            "--psql-user",
+            help="User for connecting to psql",
+            type=str,
+            required=True
+        ),
+        argument(
+            "--repl-name",
+            help="Name for publication, subscription and replication slot",
+            type=str,
+            required=True
+        ),
+    ]
+)
+def setup_replica(args) -> None:
+    try:
+        master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
+        replica_sql = SqlConn(args.replica_host, args.psql_user)
+        target_sql = SqlConn("/tmp", user="postgres", db="postgres")
+    except PsqlConnectionError as e:
+        _logger.critical(e)
+    master_checks(
+        psql=master_sql,
+        slot_name=args.repl_name,
+        pub_name=args.repl_name
+    )
+    target_check(
+        psql=target_sql,
+        database=args.database,
+        name=args.repl_name)
+
+    db_owner = master_prepare(
+        psql=master_sql,
+        name=args.repl_name,
+        database=args.database
+    )
+    create_database(
+        psql=target_sql,
+        database=args.database,
+        owner=db_owner
+    )
+    pause_replica(
+        psql=replica_sql
+    )
+    app_name, slot_name = replica_info(
+        host=args.replica_host
+    )
+    replica_stop_position = get_replica_position(
+        psql=master_sql,
+        app_name=app_name
+    )
+    sync_roles(
+        host=args.replica_host,
+        tmp_path=args.app_tmp_dir,
+        log_dir=args.app_log_dir,
+    )
+    sync_database(
+        host=args.replica_host,
+        user=args.psql_user,
+        database=args.database,
+        tmp_dir=args.app_tmp_dir,
+        log_dir=args.app_log_dir
+    )
+    create_subscriber(
+       sub_target=args.master_host,
+       database=args.database,
+       slot_name=args.repl_name,
+       repl_position=replica_stop_position
+    )
 
 
 if __name__ == "__main__":
-    drop_privileges()
-    main()
+    args = parser.parse_args()
+    if args.debug:
+        setup_logging(
+            log_level="debug",
+            debug_ssh=True,
+            save_log=args.save_log,
+            log_path=args.app_log_dir
+        )
+    elif args.verbose:
+        setup_logging(
+            log_level="debug",
+            save_log=args.save_log,
+            log_path=args.app_log_dir
+        )
+    else:
+        setup_logging(
+            log_level=args.log_level,
+            save_log=args.save_log,
+            log_path=args.app_log_dir
+        )
+    drop_privileges(args.user)
+    prepare_directories(args.app_log_dir, args.app_tmp_dir)
+    _logger.debug(f"Cli args: {args}")
+    if args.cli is None:
+        parser.print_help()
+    else:
+        args.func(args)

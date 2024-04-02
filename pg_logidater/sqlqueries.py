@@ -6,6 +6,15 @@ SQL_DROP_DATABASE = "DROP DATABASE {0}"
 SQL_CREATE_DATABASE = "CREATE DATABASE {db} OWNER {owner}"
 SQL_DROP_SUBSCRIPTION = "DROP SUBSCRIPTION {name}"
 SQL_SHOW_VERSION = "SHOW server_version"
+SQL_ADVANCE_REPLICA_POSITION = "SELECT pg_replication_origin_advance ('{id}', '{position}');"
+SQL_ENABLE_SUBSCRIPTION = "ALTER SUBSCRIPTION {name} ENABLE"
+SQL_SET_SLOT_NAME = "ALTER SUBSCRIPTION {name} SET (slot_name={slot_name})"
+SQL_DISABLE_SUBSCRIPTION = "ALTER SUBSCRIPTION {name} DISABLE"
+SQL_GET_DB_SUBSCRIPTION = "SELECT subname FROM pg_subscription"
+SQL_CREATE_REPL_LOGICAL_SLOT = "SELECT pg_create_logical_replication_slot('{0}', 'pgoutput')"
+SQL_DROP_REPL_SLOT = "SELECT pg_drop_replication_slot('{0}')"
+SQL_CREAATE_PUB = "CREATE publication {0} for all tables"
+SQL_DROP_PUB = "DROP publication {0}"
 
 SQL_CREATE_SUBSCRIPTION = """
 CREATE SUBSCRIPTION {name} connection 'host={master} port=5432 dbname={db} user=repmgr'
@@ -65,3 +74,13 @@ FROM
   pg_stat_replication
 WHERE
   application_name = '{app_name}'"""
+
+SQL_SELECT_SUB_NAME = """
+SELECT
+  roname
+FROM
+  pg_subscription sub,
+  pg_replication_origin ro
+WHERE
+  'pg_' || sub.oid = ro.roname AND
+  sub.subname = '{name}'"""

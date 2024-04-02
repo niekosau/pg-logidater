@@ -12,10 +12,10 @@ class DatabaseExists(Exception):
         super().__init__(message)
 
 
-class ReplicaAlreadyPaused(Exception):
+class ReplicaPaused(Exception):
     def __init__(self, message=None):
         if not message:
-            message = "Replication already paused"
+            message = "Replica paused"
         super().__init__(message)
 
 
