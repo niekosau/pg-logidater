@@ -18,19 +18,14 @@ def master_checks(psql: SqlConn, slot_name: str, pub_name: str) -> None:
     _logger.debug("Checking wal_level")
     wal_level = psql.get_wal_level()
     if wal_level != "logical":
-        _logger.critical(f"wal_level config not correct, current value: {wal_level}, must be: logical")
         raise ReplicaLevelNotCorrect(f"Current wal_level: {wal_level}, minimum required: logical")
     _logger.debug(f"Checking if replication slot {slot_name} doesn't exists")
     replica_slot = psql.get_replica_slot(slot_name)
     if replica_slot:
-        _logger.critical(f"Replica slot: {slot_name} already exists and it's active")
-        psql.drop_replication_slot(slot_name)
         raise ReplicaSlotExists(f"Replication slot {slot_name} already exists!")
     _logger.debug(f"Checking in publication {pub_name} doesn't exists")
     publication = psql.is_pub_exists(pub_name)
     if publication:
-        _logger.critical(f"Publication: {pub_name} already exists")
-        psql.drop_publication(pub_name)
         raise PublicationExists(f"Publication {pub_name} already exists for db: {psql.sql_conn.get_dsn_parameters()['dbname']}")
 
 

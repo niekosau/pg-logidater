@@ -14,21 +14,8 @@ PSQL_SQL_RESTORE = "/usr/bin/psql -f {file} -d {db}"
 _logger = getLogger(__name__)
 
 
-def tmp_drop_sub(name, database) -> None:
-    try:
-        psql = SqlConn("/tmp", user="postgres", password="", db=database)
-        psql.drop_subscriber()
-    except PsqlConnectionError:
-        _logger.critical(f"Unable to connect to localhost with database {database}")
-        exit(1)
-
-
 def target_check(psql: SqlConn, database: str, name: str) -> None:
     if psql.check_database(database):
-        _logger.critical(f"Database {database} already exists!")
-        _logger.warning("Cleaning up, must be removed for prod use")
-        tmp_drop_sub(name, database)
-        psql.drop_database(database)
         raise DatabaseExists
 
 
@@ -85,23 +72,19 @@ def sync_database(host: str, user: str, database: str, tmp_dir: str, log_dir: st
 
 
 def create_subscriber(sub_target: str, database: str, slot_name: str, repl_position: str) -> None:
-    try:
-        psql = SqlConn("/tmp", user="postgres", password="", db=database)
-        _logger.info(f"Creating subsriber to {sub_target}")
-        sub_id = psql.create_subscriber(
-            name=slot_name,
-            host=sub_target,
-            database=database,
-            repl_slot=slot_name
-        )
-        psql.enable_subscription(
-            sub_name=slot_name,
-            sub_id=sub_id,
-            pos=repl_position
-        )
-    except PsqlConnectionError:
-        _logger.critical(f"Unable to connect to localhost with database {database}")
-        exit(1)
+    psql = SqlConn("/tmp", user="postgres", password="", db=database)
+    _logger.info(f"Creating subsriber to {sub_target}")
+    sub_id = psql.create_subscriber(
+        name=slot_name,
+        host=sub_target,
+        database=database,
+        repl_slot=slot_name
+    )
+    psql.enable_subscription(
+        sub_name=slot_name,
+        sub_id=sub_id,
+        pos=repl_position
+    )
 
 
 def create_database(psql: SqlConn, database: str, owner: str) -> None:

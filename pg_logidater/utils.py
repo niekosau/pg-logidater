@@ -44,19 +44,13 @@ class ServerConn(paramiko.SSHClient):
 
 class SqlConn():
     def __init__(self, host, db="repmgr", user="repmgr", password="labas123", port="5432"):
-        try:
-            self.sql_conn = psycopg2.connect(
-                host=host,
-                port=port,
-                user=user,
-                password=password,
-                database=db
-            )
-        except psycopg2.OperationalError:
-            if host.startswith("/tmp"):
-                host = "localhost"
-            _logger.error(f"Unable to connect to {host} with user {user} and database {db}")
-            raise PsqlConnectionError(f"Unable to connect to {host} with user {user} and database {db}")
+        self.sql_conn = psycopg2.connect(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            database=db
+        )
         self.cursor = self.sql_conn.cursor()
         if host.startswith("/tmp"):
             host = "localhost"

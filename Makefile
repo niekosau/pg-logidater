@@ -23,10 +23,10 @@ pytest:
 
 run:
 	poetry install
-	sudo ${PYTHON} pg_logidater/cli.py --save-log setup-replica --database bitbucket --master-host 10.123.9.11 --replica-host 10.123.9.12 --psql-user repmgr --repl-name make_test $(args)
+	sudo ${PYTHON} pg_logidater/cli.py --save-log --database bitbucket --master-host 10.123.9.11 --replica-host 10.123.9.12 --psql-user repmgr --repl-name make_test $(args)
 
 run-verbose:
-	sudo ${PYTHON} pg_logidater/cli.py --verbose --save-log setup-replica --database bitbucket --master-host 10.123.9.11 --replica-host 10.123.9.12 --psql-user repmgr --repl-name make_test $(args)
+	sudo ${PYTHON} pg_logidater/cli.py --verbose --save-log --database bitbucket --master-host 10.123.9.11 --replica-host 10.123.9.12 --psql-user repmgr --repl-name make_test $(args)
 
 run-debug:
-	sudo ${PYTHON} pg_logidater/cli.py --debug setup-replica --database bitbucket --master-host 10.123.9.11 --replica-host 10.123.9.12 --psql-user repmgr --repl-name make_test $(args)
+	sudo ${PYTHON} pg_logidater/cli.py --debug --database bitbucket --master-host 10.123.9.11 --replica-host 10.123.9.12 --psql-user repmgr --repl-name make_test $(args)

@@ -1,6 +1,7 @@
 import os
 import pwd
 import argparse
+from psycopg2 import OperationalError
 from logging import getLogger
 from sys import exit
 from pg_logidater.exceptions import (
@@ -55,6 +56,36 @@ parser.add_argument(
     help="Save pg-logidater log to file",
     action="store_true"
 )
+parser.add_argument(
+    "--database",
+    help="Database to setup logical replication",
+    required=True
+)
+parser.add_argument(
+    "--master-host",
+    help="Master host from which to setup replica",
+    type=str,
+    required=True
+)
+parser.add_argument(
+    "--replica-host",
+    help="Replica host were to take dump",
+    type=str,
+    required=True
+)
+parser.add_argument(
+    "--psql-user",
+    help="User for connecting to psql",
+    type=str,
+    required=True
+)
+parser.add_argument(
+    "--repl-name",
+    help="Name for publication, subscription and replication slot",
+    type=str,
+    required=True
+)
+
 log_level = parser.add_mutually_exclusive_group()
 log_level.add_argument(
     "--log-level",
@@ -110,38 +141,7 @@ def drop_privileges(user) -> None:
         exit(1)
 
 
-@cli(
-    [
-        argument(
-            "--database",
-            help="Database to setup logical replication",
-            required=True
-        ),
-        argument(
-            "--master-host",
-            help="Master host from which to setup replica",
-            type=str,
-        ),
-        argument(
-            "--replica-host",
-            help="Replica host were to take dump",
-            type=str,
-            required=True
-        ),
-        argument(
-            "--psql-user",
-            help="User for connecting to psql",
-            type=str,
-            required=True
-        ),
-        argument(
-            "--repl-name",
-            help="Name for publication, subscription and replication slot",
-            type=str,
-            required=True
-        ),
-    ]
-)
+@cli()
 def setup_replica(args) -> None:
     try:
         master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
@@ -197,6 +197,25 @@ def setup_replica(args) -> None:
        slot_name=args.repl_name,
        repl_position=replica_stop_position
     )
+
+
+@cli()
+def drop_setup(args):
+    _logger.info("Cleaning target server")
+    try:
+        target_sql = SqlConn("/tmp", user="postgres", db=args.database)
+        target_sql.drop_subscriber()
+        target_sql = SqlConn("/tmp", user="postgres", db="postgres")
+        target_sql.drop_database(args.database)
+    except OperationalError as err:
+        _logger.warning(err)
+    _logger.info("Cleaning up master")
+    master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
+    master_sql.drop_publication(args.repl_name)
+    master_sql.drop_replication_slot(args.repl_name)
+    _logger.info("Cleaning up replica")
+    replica_sql = SqlConn(args.replica_host, args.psql_user)
+    replica_sql.resume_replica()
 
 
 if __name__ == "__main__":

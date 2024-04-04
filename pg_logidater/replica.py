@@ -11,7 +11,6 @@ _logger = getLogger(__name__)
 def pause_replica(psql: SqlConn) -> None:
     _logger.info("Pausing replica")
     if psql.is_replica_pause():
-        psql.resume_replica()
         raise ReplicaPaused
     psql.pause_replica()
 
