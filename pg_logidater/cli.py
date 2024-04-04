@@ -26,12 +26,18 @@ from pg_logidater.tartget import (
     target_check,
     sync_roles,
     sync_database,
-    get_replica_position
+    get_replica_position,
+    dump_restore_seq
 )
 
 
 _logger = getLogger(__name__)
 parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--save-log",
+    help="Save pg-logidater log to file",
+    default="/tmp/pg-logidater.log"
+)
 parser.add_argument(
     "-u",
     "--user",
@@ -50,11 +56,6 @@ parser.add_argument(
     help="Cli output log dir, default: /tmp/pg-logidater/log",
     type=str,
     default="/tmp/pg-logidater/log"
-)
-parser.add_argument(
-    "--save-log",
-    help="Save pg-logidater log to file",
-    action="store_true"
 )
 parser.add_argument(
     "--database",
@@ -197,6 +198,8 @@ def setup_replica(args) -> None:
        slot_name=args.repl_name,
        repl_position=replica_stop_position
     )
+    _logger.info("Rresuming replication")
+    replica_sql.resume_replica()
 
 
 @cli()
@@ -216,6 +219,16 @@ def drop_setup(args):
     _logger.info("Cleaning up replica")
     replica_sql = SqlConn(args.replica_host, args.psql_user)
     replica_sql.resume_replica()
+
+
+@cli()
+def sync_sequences(args):
+    master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
+    dump_restore_seq(
+        psql=master_sql,
+        tmp_dir=args.app_tmp_dir,
+        log_dir=args.app_log_dir
+    )
 
 
 if __name__ == "__main__":

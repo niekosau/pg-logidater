@@ -3,11 +3,11 @@ from pg_logidater.utils import SqlConn
 from subprocess import Popen
 from os import path
 from pg_logidater.exceptions import (
-    PsqlConnectionError,
     DatabaseExists
 )
 
 PG_DUMP_DB = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -d {db} -U {user}"
+PG_DUMP_SEQ = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -d {db} -U {user} -t {seq_name}"
 PG_DUMP_ROLES = "/usr/bin/pg_dumpall --roles-only -h {host} -U repmgr"
 PSQL_SQL_RESTORE = "/usr/bin/psql -f {file} -d {db}"
 
@@ -23,7 +23,7 @@ def run_local_cli(cli, std_log, err_log) -> None:
     with open(std_log, "w") as log:
         with open(err_log, "w") as err:
             _logger.debug(f"Executing: {cli}")
-            Popen(cli.split(" "), stdout=log, stderr=err).communicate()
+            Popen(cli.split(), stdout=log, stderr=err).communicate()
 
 
 def get_replica_position(psql: SqlConn, app_name: str) -> str:
@@ -92,4 +92,52 @@ def create_database(psql: SqlConn, database: str, owner: str) -> None:
     psql.create_database(
         database=database,
         owner=owner
+    )
+
+
+def dump_restore_seq(psql: SqlConn, tmp_dir: str, log_dir: str) -> None:
+    dsn = psql.sql_conn.get_dsn_parameters()
+    database = dsn["dbname"]
+    host = dsn["host"]
+    user = dsn["user"]
+    _logger.info(f"Syncing sequences for {database}")
+    sequences = psql.get_sequences()
+    for seq in sequences:
+        sql_seq_name = f"{seq[0]}.\"{seq[1]}\""
+        file_seq_name = f"{seq[0]}.{seq[1]}"
+        dump_path = path.join(tmp_dir, f"seq_dump_{sql_seq_name}.sql")
+        dump_err_log = path.join(log_dir, f"seq_dump_{file_seq_name}.err")
+        restore_log = path.join(log_dir, f"seq_restore_{file_seq_name}.log")
+        restore_err_log = path.join(log_dir, f"seq_restore_{file_seq_name}.err")
+        dump_seq(
+            host=host,
+            database=database,
+            user=user,
+            seq_name=sql_seq_name,
+            file_path=dump_path,
+            err_log=dump_err_log
+        )
+        restore_seq(
+            file_path=dump_path,
+            database=database,
+            restore_log=restore_log,
+            restore_err_log=restore_err_log
+        )
+
+
+def dump_seq(host: str, database: str, user: str, seq_name: str, file_path: str, err_log: str) -> None:
+    _logger.debug(f"Dumping sequence: {seq_name}")
+    run_local_cli(
+        cli=PG_DUMP_SEQ.format(host=host, db=database, user=user, seq_name=seq_name),
+        std_log=file_path,
+        err_log=err_log
+    )
+
+
+def restore_seq(file_path: str, database: str, restore_log: str, restore_err_log: str) -> None:
+    _logger.debug(f"Restoring {file_path}")
+    run_local_cli(
+        cli=PSQL_SQL_RESTORE.format(file=file_path, db=database),
+        std_log=restore_log,
+        err_log=restore_err_log
     )

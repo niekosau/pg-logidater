@@ -16,6 +16,14 @@ SQL_DROP_REPL_SLOT = "SELECT pg_drop_replication_slot('{0}')"
 SQL_CREAATE_PUB = "CREATE publication {0} for all tables"
 SQL_DROP_PUB = "DROP publication {0}"
 
+SQL_SELECT_ALL_SEQUENCES = """
+SELECT
+  sequence_schema,
+  sequence_name
+FROM
+  information_schema.sequences
+"""
+
 SQL_CREATE_SUBSCRIPTION = """
 CREATE SUBSCRIPTION {name} connection 'host={master} port=5432 dbname={db} user=repmgr'
 PUBLICATION {pub_name}

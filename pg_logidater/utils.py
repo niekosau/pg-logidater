@@ -1,6 +1,5 @@
 import logging
 from sys import stdout
-from pg_logidater.exceptions import PsqlConnectionError
 import paramiko
 import psycopg2
 import psycopg2.extras
@@ -198,8 +197,11 @@ class SqlConn():
             return True
         return False
 
+    def get_sequences(self) -> list[tuple]:
+        return self.query(sql.SQL_SELECT_ALL_SEQUENCES, fetchall=True)
 
-def setup_logging(log_level: str, debug_ssh=False, save_log: bool = False, log_path: str = None) -> None:
+
+def setup_logging(log_level: str, save_log: str, debug_ssh: bool = False,  log_path: str = None) -> None:
     log_level_int = logging.getLevelName(str(log_level).upper())
     handlers = []
     if debug_ssh:
@@ -213,10 +215,8 @@ def setup_logging(log_level: str, debug_ssh=False, save_log: bool = False, log_p
     con_log.setLevel(log_level_int)
     handlers.append(con_log)
     if save_log:
-        makedirs(log_path, exist_ok=True)
-        log_file_path = path.join(log_path, "app.log")
         fh = logging.FileHandler(
-            path.join(log_file_path)
+            path.join(save_log)
         )
         fh.setFormatter(
             logging.Formatter(LOG_FORMAT_FH)
@@ -228,12 +228,12 @@ def setup_logging(log_level: str, debug_ssh=False, save_log: bool = False, log_p
         handlers=handlers
     )
     if save_log:
-        _logger.info(f"Saving debug logging to {log_file_path}")
+        _logger.info(f"Saving debug logging to {save_log}")
 
 
 def prepare_directories(log_dir, tmp_dir) -> None:
     _logger.info("Creating needed directories")
     _logger.debug(f"Creating log dir: {log_dir}")
     makedirs(log_dir, exist_ok=True)
-    _logger.debug(f"Creating tmd dir: {tmp_dir}")
+    _logger.debug(f"Creating tmp dir: {tmp_dir}")
     makedirs(tmp_dir, exist_ok=True)
