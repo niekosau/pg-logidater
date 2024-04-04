@@ -203,7 +203,7 @@ def setup_replica(args) -> None:
 
 
 @cli()
-def drop_setup(args):
+def drop_setup(args) -> None:
     _logger.info("Cleaning target server")
     try:
         target_sql = SqlConn("/tmp", user="postgres", db=args.database)
@@ -215,20 +215,34 @@ def drop_setup(args):
     _logger.info("Cleaning up master")
     master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
     master_sql.drop_publication(args.repl_name)
-    master_sql.drop_replication_slot(args.repl_name)
+    master_sql.drop_repl_slot(args.repl_name)
     _logger.info("Cleaning up replica")
     replica_sql = SqlConn(args.replica_host, args.psql_user)
     replica_sql.resume_replica()
 
 
 @cli()
-def sync_sequences(args):
+def sync_sequences(args) -> None:
     master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
     dump_restore_seq(
         psql=master_sql,
         tmp_dir=args.app_tmp_dir,
         log_dir=args.app_log_dir
     )
+
+
+@cli()
+def remove_repl_config(args) -> None:
+    _logger.info("Removing logical replication configuration")
+    try:
+        target_sql = SqlConn("/tmp", user="postgres", db=args.database)
+        _logger.debug(f"Dropping subscriber on localhost for db {args.database}")
+        target_sql.drop_subscriber(drop_slot=True)
+    except OperationalError as err:
+        _logger.warning(err)
+    master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
+    _logger.debug(f"Dropping publication on host {args.master_host} for db {args.database}")
+    master_sql.drop_publication(args.repl_name)
 
 
 if __name__ == "__main__":

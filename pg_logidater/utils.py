@@ -83,7 +83,7 @@ class SqlConn():
             _logger.warning(f"Replication slot {slot_name} exists")
             self.sql_conn.rollback()
 
-    def drop_replication_slot(self, slot_name):
+    def drop_repl_slot(self, slot_name):
         try:
             self.query(sql.SQL_DROP_REPL_SLOT.format(slot_name))
         except psycopg2.errors.UndefinedObject:
@@ -107,13 +107,14 @@ class SqlConn():
         self.query(sql.SQL_CREATE_SUBSCRIPTION.format(name=name, master=host, db=database, pub_name=name, repl_slot=repl_slot))
         return self.query(sql.SQL_SELECT_SUB_NAME.format(name=name), fetchone=True)[0]
 
-    def drop_subscriber(self) -> None:
+    def drop_subscriber(self, drop_slot: bool = False) -> None:
         self.sql_conn.autocommit = True
         try:
             sub_name = self.get_db_sub()
             if sub_name:
                 self.disable_subscription(sub_name)
-                self.set_slot_name(sub_name, "NONE")
+                if not drop_slot:
+                    self.set_slot_name(sub_name, "NONE")
                 self.query(sql.SQL_DROP_SUBSCRIPTION.format(name=sub_name))
         except psycopg2.errors.UndefinedObject:
             _logger.warning(f"Subscription {sub_name} doesn't exist!")
