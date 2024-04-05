@@ -42,12 +42,11 @@ class ServerConn(paramiko.SSHClient):
 
 
 class SqlConn():
-    def __init__(self, host, db="repmgr", user="repmgr", password="labas123", port="5432"):
+    def __init__(self, host, db="repmgr", user="repmgr", port="5432"):
         self.sql_conn = psycopg2.connect(
             host=host,
             port=port,
             user=user,
-            password=password,
             database=db
         )
         self.cursor = self.sql_conn.cursor()

@@ -72,7 +72,7 @@ def sync_database(host: str, user: str, database: str, tmp_dir: str, log_dir: st
 
 
 def create_subscriber(sub_target: str, database: str, slot_name: str, repl_position: str) -> None:
-    psql = SqlConn("/tmp", user="postgres", password="", db=database)
+    psql = SqlConn("/tmp", user="postgres", db=database)
     _logger.info(f"Creating subsriber to {sub_target}")
     sub_id = psql.create_subscriber(
         name=slot_name,
