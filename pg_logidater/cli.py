@@ -281,17 +281,20 @@ def reduce_dict(args: dict) -> dict:
 def resolve_config(args: dict) -> dict:
     _logger.info("Merging cli params and config file")
     conf_file = args["saved_conf"]
+    conf = {}
     if os.path.isfile(conf_file):
         _logger.debug(f"Reading saved config from: {conf_file}")
         with open(conf_file, "r") as cf:
             conf = dict(json.load(cf))
             _logger.debug(f"Config file content:\n{json.dumps(conf, indent=2)}")
+    else:
+        raise FileNotFoundError(f"{conf_file} doesn't exists")
     reduce_dict(args)
     merged_dicts = args | conf
     return merged_dicts
 
 
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
     if args.debug:
         setup_logging(
@@ -324,3 +327,9 @@ if __name__ == "__main__":
         drop_privileges(args_dict.pop("user"))
         prepare_directories(args_dict["app_log_dir"], args_dict["app_tmp_dir"])
         args.func(args_dict)
+    _logger.info(f"App debug log: {args.save_log}")
+    _logger.info(f"Dump/restore logs: {args.app_log_dir}")
+
+
+if __name__ == "__main__":
+    main()
