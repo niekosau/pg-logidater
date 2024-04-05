@@ -27,6 +27,10 @@ publish-test:
 	poetry build
 	poetry publish -r test-pypi
 
+publish:
+	poetry build
+	poetry publish
+
 run:
 	poetry install
 	sudo ${PYTHON} pg_logidater/cli.py --saved-conf pg_logidater.conf $(args)
