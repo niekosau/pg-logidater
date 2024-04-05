@@ -327,8 +327,8 @@ def main():
         drop_privileges(args_dict.pop("user"))
         prepare_directories(args_dict["app_log_dir"], args_dict["app_tmp_dir"])
         args.func(args_dict)
-    _logger.info(f"App debug log: {args.save_log}")
-    _logger.info(f"Dump/restore logs: {args.app_log_dir}")
+        _logger.info(f"App debug log: {args.save_log}")
+        _logger.info(f"Dump/restore logs: {args.app_log_dir}")
 
 
 if __name__ == "__main__":
