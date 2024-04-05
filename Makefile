@@ -30,3 +30,6 @@ publish-test:
 run:
 	poetry install
 	sudo ${PYTHON} pg_logidater/cli.py --saved-conf pg_logidater.conf $(args)
+
+test:
+	twine check dist/*
