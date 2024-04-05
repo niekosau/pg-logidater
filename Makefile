@@ -21,6 +21,12 @@ pytest:
 
 .PHONY: build buil-clean
 
+build:
+	poetry build
+
+publish:
+	poetry publish -r test-pypi
+
 run:
 	poetry install
 	sudo ${PYTHON} pg_logidater/cli.py --database bitbucket --master-host 10.123.9.11 --replica-host 10.123.9.12 --psql-user repmgr --repl-name make_test $(args)

@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ -e /etc/redhat-release ]
 then
-  sudo dnf -y install python3.9 python3.9-pip binutils make
+  sudo dnf -y install python3.9 python3.9-pip binutils make rpm-build
 fi
 if [ -e /etc/debian_version ]
 then
