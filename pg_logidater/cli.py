@@ -1,6 +1,7 @@
 import os
 import pwd
 import argparse
+import json
 from psycopg2 import OperationalError
 from logging import getLogger
 from sys import exit
@@ -39,13 +40,6 @@ parser.add_argument(
     default="/tmp/pg-logidater.log"
 )
 parser.add_argument(
-    "-u",
-    "--user",
-    type=str,
-    help="User for running application, default=postgres",
-    default="postgres"
-)
-parser.add_argument(
     "--app-tmp-dir",
     help="Temp directory to store dumps",
     type=str,
@@ -58,35 +52,41 @@ parser.add_argument(
     default="/tmp/pg-logidater/log"
 )
 parser.add_argument(
+    "--saved-conf",
+    help="Path to file with saved json config",
+    type=str
+)
+parser.add_argument(
+    "-u",
+    "--user",
+    type=str,
+    help="User for running application, default=postgres",
+    default="postgres"
+)
+parser.add_argument(
     "--database",
     help="Database to setup logical replication",
-    required=True
 )
 parser.add_argument(
     "--master-host",
     help="Master host from which to setup replica",
     type=str,
-    required=True
 )
 parser.add_argument(
     "--replica-host",
     help="Replica host were to take dump",
     type=str,
-    required=True
 )
 parser.add_argument(
     "--psql-user",
     help="User for connecting to psql",
     type=str,
-    required=True
 )
 parser.add_argument(
     "--repl-name",
     help="Name for publication, subscription and replication slot",
     type=str,
-    required=True
 )
-
 log_level = parser.add_mutually_exclusive_group()
 log_level.add_argument(
     "--log-level",
@@ -145,57 +145,57 @@ def drop_privileges(user) -> None:
 @cli()
 def setup_replica(args) -> None:
     try:
-        master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
-        replica_sql = SqlConn(args.replica_host, args.psql_user)
+        master_sql = SqlConn(args["master_host"], user=args["psql_user"], db=args["database"])
+        replica_sql = SqlConn(args["replica_host"], args["psql_user"])
         target_sql = SqlConn("/tmp", user="postgres", db="postgres")
     except PsqlConnectionError as e:
         _logger.critical(e)
     master_checks(
         psql=master_sql,
-        slot_name=args.repl_name,
-        pub_name=args.repl_name
+        slot_name=args["repl_name"],
+        pub_name=args["repl_name"]
     )
     target_check(
         psql=target_sql,
-        database=args.database,
-        name=args.repl_name)
+        database=args["database"],
+        name=args["repl_name"])
 
     db_owner = master_prepare(
         psql=master_sql,
-        name=args.repl_name,
-        database=args.database
+        name=args["repl_name"],
+        database=args["database"]
     )
     create_database(
         psql=target_sql,
-        database=args.database,
+        database=args["database"],
         owner=db_owner
     )
     pause_replica(
         psql=replica_sql
     )
     app_name, slot_name = replica_info(
-        host=args.replica_host
+        host=args["replica_host"]
     )
     replica_stop_position = get_replica_position(
         psql=master_sql,
         app_name=app_name
     )
     sync_roles(
-        host=args.replica_host,
-        tmp_path=args.app_tmp_dir,
-        log_dir=args.app_log_dir,
+        host=args["replica_host"],
+        tmp_path=args["app_tmp_dir"],
+        log_dir=args["app_log_dir"],
     )
     sync_database(
-        host=args.replica_host,
-        user=args.psql_user,
-        database=args.database,
-        tmp_dir=args.app_tmp_dir,
-        log_dir=args.app_log_dir
+        host=args["replica_host"],
+        user=args["psql_user"],
+        database=args["database"],
+        tmp_dir=args["app_tmp_dir"],
+        log_dir=args["app_log_dir"]
     )
     create_subscriber(
-       sub_target=args.master_host,
-       database=args.database,
-       slot_name=args.repl_name,
+       sub_target=args["master_host"],
+       database=args["database"],
+       slot_name=args["repl_name"],
        repl_position=replica_stop_position
     )
     _logger.info("Rresuming replication")
@@ -206,28 +206,28 @@ def setup_replica(args) -> None:
 def drop_setup(args) -> None:
     _logger.info("Cleaning target server")
     try:
-        target_sql = SqlConn("/tmp", user="postgres", db=args.database)
+        target_sql = SqlConn("/tmp", user="postgres", db=args["database"])
         target_sql.drop_subscriber()
         target_sql = SqlConn("/tmp", user="postgres", db="postgres")
-        target_sql.drop_database(args.database)
+        target_sql.drop_database(args["database"])
     except OperationalError as err:
         _logger.warning(err)
     _logger.info("Cleaning up master")
-    master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
-    master_sql.drop_publication(args.repl_name)
-    master_sql.drop_repl_slot(args.repl_name)
+    master_sql = SqlConn(args["master_host"], user=args["psql_user"], db=args["database"])
+    master_sql.drop_publication(args["repl_name"])
+    master_sql.drop_repl_slot(args["repl_name"])
     _logger.info("Cleaning up replica")
-    replica_sql = SqlConn(args.replica_host, args.psql_user)
+    replica_sql = SqlConn(args["replica_host"], args["psql_user"])
     replica_sql.resume_replica()
 
 
 @cli()
 def sync_sequences(args) -> None:
-    master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
+    master_sql = SqlConn(args["master_host"], user=args["psql_user"], db=args["database"])
     dump_restore_seq(
         psql=master_sql,
-        tmp_dir=args.app_tmp_dir,
-        log_dir=args.app_log_dir
+        tmp_dir=args["app_tmp_dir"],
+        log_dir=args["app_log_dir"]
     )
 
 
@@ -235,14 +235,60 @@ def sync_sequences(args) -> None:
 def remove_repl_config(args) -> None:
     _logger.info("Removing logical replication configuration")
     try:
-        target_sql = SqlConn("/tmp", user="postgres", db=args.database)
-        _logger.debug(f"Dropping subscriber on localhost for db {args.database}")
+        target_sql = SqlConn("/tmp", user="postgres", db=args["database"])
+        _logger.debug(f"Dropping subscriber on localhost for db {args['database']}")
         target_sql.drop_subscriber(drop_slot=True)
     except OperationalError as err:
         _logger.warning(err)
-    master_sql = SqlConn(args.master_host, user=args.psql_user, db=args.database)
-    _logger.debug(f"Dropping publication on host {args.master_host} for db {args.database}")
-    master_sql.drop_publication(args.repl_name)
+    master_sql = SqlConn(args["master_host"], user=args["psql_user"], db=args["database"])
+    _logger.debug(f"Dropping publication on host {args['master_host']} for db {args['database']}")
+    master_sql.drop_publication(args["repl_name"])
+
+
+@cli(
+    [
+        argument(
+            "--conf-save-path",
+            help="Path were to save cli options for later use, default: current directory",
+            default=os.path.join(os.getcwd(), "pg_logidater.conf")
+        )
+    ]
+)
+def save_cli_options(args: dict) -> None:
+    _logger.info(f"Saving cli options to file {args['conf_save_path']}")
+    with open(args["conf_save_path"], "w") as write_conf:
+        args_dict = reduce_dict(args)
+        args_dict.pop("func")
+        json.dump(args_dict, write_conf, indent=2)
+
+
+def reduce_dict(args: dict) -> dict:
+    try:
+        args.pop("conf_save_path")
+    except KeyError:
+        pass
+    try:
+        args.pop("cli")
+    except KeyError:
+        pass
+    try:
+        args.pop("saved_conf")
+    except KeyError:
+        pass
+    return args
+
+
+def resolve_config(args: dict) -> dict:
+    _logger.info("Merging cli params and config file")
+    conf_file = args["saved_conf"]
+    if os.path.isfile(conf_file):
+        _logger.debug(f"Reading saved config from: {conf_file}")
+        with open(conf_file, "r") as cf:
+            conf = dict(json.load(cf))
+            _logger.debug(f"Config file content:\n{json.dumps(conf, indent=2)}")
+    reduce_dict(args)
+    merged_dicts = args | conf
+    return merged_dicts
 
 
 if __name__ == "__main__":
@@ -266,10 +312,15 @@ if __name__ == "__main__":
             save_log=args.save_log,
             log_path=args.app_log_dir
         )
-    drop_privileges(args.user)
-    prepare_directories(args.app_log_dir, args.app_tmp_dir)
     _logger.debug(f"Cli args: {args}")
+    args_dict = vars(args)
     if args.cli is None:
         parser.print_help()
+    elif args.cli == "save-cli-options":
+        args.func(args_dict)
     else:
-        args.func(args)
+        if args.saved_conf is not None:
+            args_dict = resolve_config(args_dict)
+        drop_privileges(args_dict.pop("user"))
+        prepare_directories(args_dict["app_log_dir"], args_dict["app_tmp_dir"])
+        args.func(args_dict)

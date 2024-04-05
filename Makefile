@@ -25,6 +25,9 @@ run:
 	poetry install
 	sudo ${PYTHON} pg_logidater/cli.py --database bitbucket --master-host 10.123.9.11 --replica-host 10.123.9.12 --psql-user repmgr --repl-name make_test $(args)
 
+run-conf:
+	sudo ${PYTHON} pg_logidater/cli.py --saved-conf pg_logidater.conf $(args)
+
 run-verbose:
 	sudo ${PYTHON} pg_logidater/cli.py --verbose --database bitbucket --master-host 10.123.9.11 --replica-host 10.123.9.12 --psql-user repmgr --repl-name make_test $(args)
 
