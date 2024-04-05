@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pg-logidater"
-readme = ["README.md", "LICENSE"]
+readme = "README.md"
 authors = ["Arunas Grigalionis <arunas.grigalionis@gmail.com>"]
 description = "Postgresql logical replication setup utility"
 version = "0.0.0a7"
