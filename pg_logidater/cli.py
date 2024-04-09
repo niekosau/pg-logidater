@@ -142,7 +142,15 @@ def drop_privileges(user) -> None:
         exit(1)
 
 
-@cli()
+@cli(
+    [
+        argument(
+            "--ignore-pkey",
+            help="Ignore missing pkeys",
+            action="store_true"
+        )
+    ]
+)
 def setup_replica(args) -> None:
     try:
         master_sql = SqlConn(args["master_host"], user=args["psql_user"], db=args["database"])
@@ -153,7 +161,8 @@ def setup_replica(args) -> None:
     db_size = master_checks(
         psql=master_sql,
         slot_name=args["repl_name"],
-        pub_name=args["repl_name"]
+        pub_name=args["repl_name"],
+        skip_pkey_check=args["ignore_pkey"]
     )
     target_check(
         psql=target_sql,

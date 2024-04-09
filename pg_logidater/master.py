@@ -13,7 +13,7 @@ PSQL = "/usr/bin/psql"
 _logger = getLogger(__name__)
 
 
-def master_checks(psql: SqlConn, slot_name: str, pub_name: str) -> int:
+def master_checks(psql: SqlConn, slot_name: str, pub_name: str, skip_pkey_check: bool) -> int:
     _logger.info("Starting master checks")
     _logger.debug("Checking wal_level")
     wal_level = psql.get_wal_level()
@@ -27,6 +27,17 @@ def master_checks(psql: SqlConn, slot_name: str, pub_name: str) -> int:
     publication = psql.is_pub_exists(pub_name)
     if publication:
         raise PublicationExists(f"Publication {pub_name} already exists for db: {psql.sql_conn.get_dsn_parameters()['dbname']}")
+    if not skip_pkey_check:
+        _logger.debug("Checking tables without primary keys")
+        no_keys_list = psql.get_no_primary_key()
+        if no_keys_list:
+            _logger.warning("Database have tables without primary key, that can cause issues with logical replication")
+            _logger.warning("Following tables doesn't have primary key")
+            for item in no_keys_list:
+                print(f"{item[0]}.{item[1]}")
+            _logger.warning("If that's fine, add --ignore-pkey switch")
+            exit(1)
+    _logger.debug("Getting db size")
     db = psql.sql_conn.get_dsn_parameters()["dbname"]
     db_size = psql.get_db_size(db)
     return db_size

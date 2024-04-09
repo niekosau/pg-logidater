@@ -94,3 +94,21 @@ FROM
 WHERE
   'pg_' || sub.oid = ro.roname AND
   sub.subname = '{name}'"""
+
+SQL_NO_PRIMARY_KEYS = """
+SELECT
+  t.table_schema,
+  t.table_name
+FROM
+  information_schema.tables AS t
+  LEFT JOIN information_schema.table_constraints AS tc ON (
+    t.table_schema = t.table_schema
+    AND t.table_name = tc.table_name
+    AND tc.constraint_type = 'PRIMARY KEY'
+  )
+WHERE
+  t.table_type = 'BASE TABLE'
+  AND t.table_schema NOT IN ('pg_catalog', 'information_schema')
+  AND tc.constraint_name IS NULL
+ORDER BY
+  t.table_schema"""
