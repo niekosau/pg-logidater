@@ -28,7 +28,7 @@ from pg_logidater.tartget import (
     sync_roles,
     sync_database,
     get_replica_position,
-    dump_restore_seq
+    sync_seq_pipe
 )
 
 
@@ -128,9 +128,12 @@ def cli(args=[], parent=subparser, cmd_aliases=None):
 
 
 def drop_privileges(user) -> None:
-    _logger.info(f"Chnaging user to: {user}")
     try:
+        current_uid = os.getuid()
         change_user = pwd.getpwnam(user)
+        if current_uid == change_user.pw_uid:
+            return
+        _logger.info(f"Chnaging user to: {user}")
         os.setgid(change_user.pw_gid)
         os.setuid(change_user.pw_uid)
         os.environ["HOME"] = change_user.pw_dir
@@ -235,9 +238,8 @@ def drop_setup(args) -> None:
 @cli()
 def sync_sequences(args) -> None:
     master_sql = SqlConn(args["master_host"], user=args["psql_user"], db=args["database"])
-    dump_restore_seq(
+    sync_seq_pipe(
         psql=master_sql,
-        tmp_dir=args["app_tmp_dir"],
         log_dir=args["app_log_dir"]
     )
 
@@ -307,6 +309,9 @@ def resolve_config(args: dict) -> dict:
 
 def main():
     args = parser.parse_args()
+    if args.cli is None:
+        parser.print_help()
+        exit(0)
     if args.debug:
         setup_logging(
             log_level="debug",
@@ -328,9 +333,7 @@ def main():
         )
     _logger.debug(f"Cli args: {args}")
     args_dict = vars(args)
-    if args.cli is None:
-        parser.print_help()
-    elif args.cli == "save-cli-options":
+    if args.cli == "save-cli-options":
         args.func(args_dict)
     else:
         if args.saved_conf is not None:

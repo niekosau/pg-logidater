@@ -1,6 +1,6 @@
 from logging import getLogger
 from pg_logidater.utils import SqlConn
-from subprocess import Popen
+from subprocess import Popen, PIPE
 from os import path
 from shutil import disk_usage
 from pg_logidater.exceptions import (
@@ -8,30 +8,42 @@ from pg_logidater.exceptions import (
     DiskSpaceTooLow
 )
 
-PG_DUMP_DB = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -d {db} -U {user}"
+PG_DUMP_DB = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -U {user} {db}"
 PG_DUMP_SEQ = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -d {db} -U {user} -t {seq_name}"
 PG_DUMP_ROLES = "/usr/bin/pg_dumpall --roles-only -h {host} -U repmgr"
 PSQL_SQL_RESTORE = "/usr/bin/psql -f {file} -d {db}"
+PSQL_SQL_PIPE_RESTORE = "/usr/bin/psql -d {db}"
+
 
 _logger = getLogger(__name__)
 
 
 def target_check(psql: SqlConn, database: str, name: str, db_size: int) -> None:
-    _logger.info("Target check")
+    _logger.info("Executing target checks")
     _logger.debug("Checking available disk space")
     data_path = psql.get_datadirectory()
     available_disk = int(disk_usage(path=data_path).free * 0.9)
     if available_disk < db_size:
         raise DiskSpaceTooLow(f"Low disk space for {data_path}")
+    _logger.debug("Checking if database not exists")
     if psql.check_database(database):
         raise DatabaseExists
 
 
-def run_local_cli(cli, std_log, err_log) -> None:
+def run_local_cli(cli, std_log, err_log, cli2: str = None, pipe: bool = False) -> None:
     with open(std_log, "w") as log:
         with open(err_log, "w") as err:
-            _logger.debug(f"Executing: {cli}")
-            Popen(cli.split(), stdout=log, stderr=err).communicate()
+            if pipe:
+                if not cli2:
+                    _logger.critical("cli2 parameter mandaroty for pipe true")
+                    exit(1)
+                _logger.debug(f"Running: {cli} | {cli2}")
+                pipe_output = Popen(cli.split(), stdout=PIPE)
+                pipe_sync = Popen(cli2.split(), stdin=pipe_output.stdout, stdout=log, stderr=err)
+                pipe_sync.communicate()
+            else:
+                _logger.debug(f"Executing: {cli}")
+                Popen(cli.split(), stdout=log, stderr=err).communicate()
 
 
 def get_replica_position(psql: SqlConn, app_name: str) -> str:
@@ -61,21 +73,14 @@ def sync_roles(host: str, tmp_path: str, log_dir: str) -> None:
 
 def sync_database(host: str, user: str, database: str, tmp_dir: str, log_dir: str) -> None:
     _logger.info(f"Syncing database {database}")
-    db_dump_path = path.join(tmp_dir, f"{database}.sql")
-    db_dump_err_log = path.join(log_dir, f"{database}.err")
-    _logger.debug(f"Dumping {database} to {db_dump_path} from {host}")
+    sync_log = path.join(log_dir, f"sync_{database}.log")
+    sync_err_log = path.join(log_dir, f"sync_{database}.err")
     run_local_cli(
-        PG_DUMP_DB.format(db=database, host=host, user=user),
-        db_dump_path,
-        db_dump_err_log
-    )
-    db_restore_log = path.join(log_dir, f"{database}_restore.log")
-    db_restore_err_log = path.join(tmp_dir, f"{database}_restore.err")
-    _logger.debug(f"Restoring {database} from {db_dump_path} on target")
-    run_local_cli(
-        PSQL_SQL_RESTORE.format(file=db_dump_path, db=database),
-        db_restore_log,
-        db_restore_err_log
+        cli=PG_DUMP_DB.format(db=database, host=host, user=user),
+        cli2=PSQL_SQL_PIPE_RESTORE.format(db=database),
+        std_log=sync_log,
+        err_log=sync_err_log,
+        pipe=True
     )
 
 
@@ -103,7 +108,7 @@ def create_database(psql: SqlConn, database: str, owner: str) -> None:
     )
 
 
-def dump_restore_seq(psql: SqlConn, tmp_dir: str, log_dir: str) -> None:
+def sync_seq_pipe(psql: SqlConn, log_dir: str) -> None:
     dsn = psql.sql_conn.get_dsn_parameters()
     database = dsn["dbname"]
     host = dsn["host"]
@@ -111,41 +116,14 @@ def dump_restore_seq(psql: SqlConn, tmp_dir: str, log_dir: str) -> None:
     _logger.info(f"Syncing sequences for {database}")
     sequences = psql.get_sequences()
     for seq in sequences:
-        sql_seq_name = f"{seq[0]}.\"{seq[1]}\""
         file_seq_name = f"{seq[0]}.{seq[1]}"
-        dump_path = path.join(tmp_dir, f"seq_dump_{sql_seq_name}.sql")
-        dump_err_log = path.join(log_dir, f"seq_dump_{file_seq_name}.err")
-        restore_log = path.join(log_dir, f"seq_restore_{file_seq_name}.log")
-        restore_err_log = path.join(log_dir, f"seq_restore_{file_seq_name}.err")
-        dump_seq(
-            host=host,
-            database=database,
-            user=user,
-            seq_name=sql_seq_name,
-            file_path=dump_path,
-            err_log=dump_err_log
+        sql_seq_name = f"{seq[0]}.\"{seq[1]}\""
+        sync_seq_log = path.join(log_dir, f"sync_seq_{file_seq_name}.log")
+        sync_seq_err_log = path.join(log_dir, f"sync_seq_{file_seq_name}.err")
+        run_local_cli(
+            cli=PG_DUMP_SEQ.format(host=host, db=database, user=user, seq_name=sql_seq_name),
+            cli2=PSQL_SQL_PIPE_RESTORE.format(db=database),
+            std_log=sync_seq_log,
+            err_log=sync_seq_err_log,
+            pipe=True
         )
-        restore_seq(
-            file_path=dump_path,
-            database=database,
-            restore_log=restore_log,
-            restore_err_log=restore_err_log
-        )
-
-
-def dump_seq(host: str, database: str, user: str, seq_name: str, file_path: str, err_log: str) -> None:
-    _logger.debug(f"Dumping sequence: {seq_name}")
-    run_local_cli(
-        cli=PG_DUMP_SEQ.format(host=host, db=database, user=user, seq_name=seq_name),
-        std_log=file_path,
-        err_log=err_log
-    )
-
-
-def restore_seq(file_path: str, database: str, restore_log: str, restore_err_log: str) -> None:
-    _logger.debug(f"Restoring {file_path}")
-    run_local_cli(
-        cli=PSQL_SQL_RESTORE.format(file=file_path, db=database),
-        std_log=restore_log,
-        err_log=restore_err_log
-    )

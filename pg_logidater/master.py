@@ -14,7 +14,7 @@ _logger = getLogger(__name__)
 
 
 def master_checks(psql: SqlConn, slot_name: str, pub_name: str, skip_pkey_check: bool) -> int:
-    _logger.info("Starting master checks")
+    _logger.info("Executing master checks")
     _logger.debug("Checking wal_level")
     wal_level = psql.get_wal_level()
     if wal_level != "logical":
