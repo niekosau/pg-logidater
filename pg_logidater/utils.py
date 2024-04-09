@@ -200,6 +200,9 @@ class SqlConn():
     def get_sequences(self) -> list[tuple]:
         return self.query(sql.SQL_SELECT_ALL_SEQUENCES, fetchall=True)
 
+    def get_datadirectory(self) -> float:
+        return (self.query(sql.SQL_DATA_DIRECTORY, fetchone=True))[0]
+
 
 def setup_logging(log_level: str, save_log: str, debug_ssh: bool = False,  log_path: str = None) -> None:
     log_level_int = logging.getLevelName(str(log_level).upper())

@@ -174,7 +174,8 @@ def setup_replica(args) -> None:
         psql=replica_sql
     )
     app_name, slot_name = replica_info(
-        host=args["replica_host"]
+        host=args["replica_host"],
+        psql=replica_sql
     )
     replica_stop_position = get_replica_position(
         psql=master_sql,

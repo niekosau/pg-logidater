@@ -38,3 +38,10 @@ class PublicationExists(Exception):
         if not message:
             message = "Publication exists"
         super().__init__(message)
+
+
+class VersionNotSupported(Exception):
+    def __init__(self, message=None):
+        if not message:
+            message = "Version not supported"
+        super().__init__(message)

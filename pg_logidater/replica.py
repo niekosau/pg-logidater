@@ -2,10 +2,16 @@ from logging import getLogger
 from pg_logidater.utils import SqlConn, ServerConn
 from os import path
 from pg_logidater.exceptions import (
-    ReplicaPaused
+    ReplicaPaused,
+    VersionNotSupported
 )
 
 _logger = getLogger(__name__)
+
+RECOVYRY_CONF_BY_VERSION = {
+    11: "recovery.conf",
+    12: "postgresql.auto.conf"
+}
 
 
 def pause_replica(psql: SqlConn) -> None:
@@ -15,13 +21,15 @@ def pause_replica(psql: SqlConn) -> None:
     psql.pause_replica()
 
 
-def replica_info(host, user="postgres") -> (str, str):
+def replica_info(host, psql: SqlConn, user="postgres") -> (str, str):
     _logger.info("Collecting replica info")
+    pgdata = psql.get_datadirectory()
+    psql_version = int(psql.server_version())
+    if psql_version not in RECOVYRY_CONF_BY_VERSION.keys():
+        raise VersionNotSupported
+    recovey_conf = RECOVYRY_CONF_BY_VERSION[psql_version]
     with ServerConn(host, user) as ssh:
-        cli = "awk -F '=' /PGDATA=/'{print $NF}' .bash_profile"
-        _logger.debug(f"Executing: {cli}")
-        pgdata = ssh.run_cmd(cli)
-        auto_conf_name = path.join(pgdata.strip(), "postgresql.auto.conf")
+        auto_conf_name = path.join(pgdata, recovey_conf)
         cli = f"cat {auto_conf_name}"
         _logger.debug(f"Executing: {cli}")
         psql_auto_conf = ssh.run_cmd(cli)

@@ -15,6 +15,7 @@ SQL_CREATE_REPL_LOGICAL_SLOT = "SELECT pg_create_logical_replication_slot('{0}',
 SQL_DROP_REPL_SLOT = "SELECT pg_drop_replication_slot('{0}')"
 SQL_CREAATE_PUB = "CREATE publication {0} for all tables"
 SQL_DROP_PUB = "DROP publication {0}"
+SQL_DATA_DIRECTORY = "SHOW data_directory"
 
 SQL_SELECT_ALL_SEQUENCES = """
 SELECT
