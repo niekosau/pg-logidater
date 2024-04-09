@@ -150,7 +150,7 @@ def setup_replica(args) -> None:
         target_sql = SqlConn("/tmp", user="postgres", db="postgres")
     except PsqlConnectionError as e:
         _logger.critical(e)
-    master_checks(
+    db_size = master_checks(
         psql=master_sql,
         slot_name=args["repl_name"],
         pub_name=args["repl_name"]
@@ -158,8 +158,9 @@ def setup_replica(args) -> None:
     target_check(
         psql=target_sql,
         database=args["database"],
-        name=args["repl_name"])
-
+        name=args["repl_name"],
+        db_size=db_size
+    )
     db_owner = master_prepare(
         psql=master_sql,
         name=args["repl_name"],

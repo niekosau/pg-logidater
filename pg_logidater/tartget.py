@@ -2,8 +2,10 @@ from logging import getLogger
 from pg_logidater.utils import SqlConn
 from subprocess import Popen
 from os import path
+from shutil import disk_usage
 from pg_logidater.exceptions import (
-    DatabaseExists
+    DatabaseExists,
+    DiskSpaceTooLow
 )
 
 PG_DUMP_DB = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -d {db} -U {user}"
@@ -14,7 +16,13 @@ PSQL_SQL_RESTORE = "/usr/bin/psql -f {file} -d {db}"
 _logger = getLogger(__name__)
 
 
-def target_check(psql: SqlConn, database: str, name: str) -> None:
+def target_check(psql: SqlConn, database: str, name: str, db_size: int) -> None:
+    _logger.info("Target check")
+    _logger.debug("Checking available disk space")
+    data_path = psql.get_datadirectory()
+    available_disk = int(disk_usage(path=data_path).free * 0.9)
+    if available_disk < db_size:
+        raise DiskSpaceTooLow(f"Low disk space for {data_path}")
     if psql.check_database(database):
         raise DatabaseExists
 

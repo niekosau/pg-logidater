@@ -45,3 +45,7 @@ class VersionNotSupported(Exception):
         if not message:
             message = "Version not supported"
         super().__init__(message)
+
+
+class DiskSpaceTooLow(Exception):
+    pass

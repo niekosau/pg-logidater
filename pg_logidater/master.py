@@ -13,7 +13,7 @@ PSQL = "/usr/bin/psql"
 _logger = getLogger(__name__)
 
 
-def master_checks(psql: SqlConn, slot_name: str, pub_name: str) -> None:
+def master_checks(psql: SqlConn, slot_name: str, pub_name: str) -> int:
     _logger.info("Starting master checks")
     _logger.debug("Checking wal_level")
     wal_level = psql.get_wal_level()
@@ -27,6 +27,9 @@ def master_checks(psql: SqlConn, slot_name: str, pub_name: str) -> None:
     publication = psql.is_pub_exists(pub_name)
     if publication:
         raise PublicationExists(f"Publication {pub_name} already exists for db: {psql.sql_conn.get_dsn_parameters()['dbname']}")
+    db = psql.sql_conn.get_dsn_parameters()["dbname"]
+    db_size = psql.get_db_size(db)
+    return db_size
 
 
 def master_prepare(psql: SqlConn, name: str, database: str) -> str:
