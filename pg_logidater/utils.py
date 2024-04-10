@@ -205,6 +205,9 @@ class SqlConn():
     def get_no_primary_key(self) -> list[tuple]:
         return self.query(sql.SQL_NO_PRIMARY_KEYS, fetchall=True)
 
+    def analyze(self) -> None:
+        self.query(sql.SQL_ANALYZE)
+
 
 def setup_logging(log_level: str, save_log: str, debug_ssh: bool = False,  log_path: str = None) -> None:
     log_level_int = logging.getLevelName(str(log_level).upper())

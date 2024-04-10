@@ -29,7 +29,8 @@ from pg_logidater.tartget import (
     sync_roles,
     sync_database,
     get_replica_position,
-    sync_seq_pipe
+    sync_seq_pipe,
+    analyse_target
 )
 
 
@@ -216,6 +217,7 @@ def setup_replica(args) -> None:
     )
     _logger.info("Rresuming replication")
     replica_sql.resume_replica()
+    analyse_target(target_sql)
 
 
 @cli()

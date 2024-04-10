@@ -127,3 +127,8 @@ def sync_seq_pipe(psql: SqlConn, log_dir: str) -> None:
             err_log=sync_seq_err_log,
             pipe=True
         )
+
+
+def analyse_target(psql: SqlConn) -> None:
+    _logger.info("Updating database statistics")
+    psql.analyze()

@@ -17,6 +17,7 @@ SQL_CREAATE_PUB = "CREATE publication {0} for all tables"
 SQL_DROP_PUB = "DROP publication {0}"
 SQL_DATA_DIRECTORY = "SHOW data_directory"
 SQL_DB_SIZE = "SELECT pg_database_size('{db}')"
+SQL_ANALYZE = "ANALYZE VERBOSE"
 
 SQL_SELECT_ALL_SEQUENCES = """
 SELECT
