@@ -3,7 +3,6 @@ from sys import stdout
 import paramiko
 import psycopg2
 import psycopg2.extras
-from sys import exit
 from pg_logidater import sqlqueries as sql
 from os import makedirs, path
 

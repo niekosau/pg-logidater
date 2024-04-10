@@ -1169,13 +1169,13 @@ files = [
 
 [[package]]
 name = "pycotore"
-version = "0.0.3"
+version = "0.1.0"
 description = "Generic classes for reuse"
 optional = false
 python-versions = "<3.10,>=3.9"
 files = [
-    {file = "pycotore-0.0.3-py3-none-any.whl", hash = "sha256:d3e3b82bc24cf3c995a9b8c6212116597a1f6486834df452f1117834b9c1910b"},
-    {file = "pycotore-0.0.3.tar.gz", hash = "sha256:bb8a75009af4421921c9d69b577cdb16d2f7c9044f66d15a78eb68cf3aa9e0f6"},
+    {file = "pycotore-0.1.0-py3-none-any.whl", hash = "sha256:cf1bea9f2876a21bcbc190f9007296e5cfc6735a7b7e025f574342736baa9012"},
+    {file = "pycotore-0.1.0.tar.gz", hash = "sha256:f7974e3d4ceac72aadb470dd42f1a79a6b5aa6acb34f6c76fd3d387217b6f85e"},
 ]
 
 [[package]]
@@ -1774,4 +1774,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.9"
-content-hash = "c8485d326c17c174e2e82ef0d2eafaa90e717ea7ebc12d91ff511aa4c42440f2"
+content-hash = "b343de6c199544d7e05b735676dc98fd2ff75a85581439eec5aaf7027b3999d9"

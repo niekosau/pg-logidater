@@ -104,6 +104,8 @@ def db_sync_progress_bar(psql: SqlConn, total: float, event: Event, db: str, upd
         bar.update_progress(synced_size)
         bar.draw()
         event.wait(update_interval)
+    bar.update_progress(total)
+    bar.draw()
     bar.flush_line()
 
 
