@@ -23,11 +23,7 @@ class ServerConn(paramiko.SSHClient):
         self.user = user
 
     def __enter__(self):
-        try:
-            self.connect(hostname=self.host, username=self.user)
-        except paramiko.ssh_exception.SSHException:
-            _logger.critical(f"Unable ssh to {self.host} with user: {self.user}")
-            exit(1)
+        self.connect(hostname=self.host, username=self.user)
         return self
 
     def __exit__(self, type, value, traceback):
