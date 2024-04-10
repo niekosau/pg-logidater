@@ -48,4 +48,6 @@ class VersionNotSupported(Exception):
 
 
 class DiskSpaceTooLow(Exception):
-    pass
+    """
+    Disk space too low exception
+    """
