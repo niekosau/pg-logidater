@@ -2,6 +2,7 @@ import os
 import pwd
 import argparse
 import json
+from threading import Thread, Event
 from psycopg2 import OperationalError
 from logging import getLogger
 from sys import exit
@@ -30,7 +31,8 @@ from pg_logidater.tartget import (
     sync_database,
     get_replica_position,
     sync_seq_pipe,
-    analyse_target
+    analyse_target,
+    db_sync_progress_bar
 )
 
 
@@ -153,6 +155,12 @@ def drop_privileges(user) -> None:
             "--ignore-pkey",
             help="Ignore missing pkeys",
             action="store_true"
+        ),
+        argument(
+            "--update-interval",
+            help="Progress update interval, default 2s",
+            default=2,
+            type=float
         )
     ]
 )
@@ -202,13 +210,28 @@ def setup_replica(args) -> None:
         tmp_path=args["app_tmp_dir"],
         log_dir=args["app_log_dir"],
     )
+
+    event_finished = Event()
+    progress_thread = Thread(
+        target=db_sync_progress_bar,
+        args=(
+            target_sql,
+            db_size,
+            event_finished,
+            args["database"],
+            args["update_interval"],
+        )
+    )
+    progress_thread.start()
     sync_database(
         host=args["replica_host"],
         user=args["psql_user"],
         database=args["database"],
         tmp_dir=args["app_tmp_dir"],
-        log_dir=args["app_log_dir"]
+        log_dir=args["app_log_dir"],
+        event=event_finished
     )
+    progress_thread.join()
     create_subscriber(
        sub_target=args["master_host"],
        database=args["database"],

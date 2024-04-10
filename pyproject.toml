@@ -16,6 +16,7 @@ pg-logidater = 'pg_logidater.cli:main'
 python = "~3.9"
 psycopg2-binary = "^2.9.9"
 paramiko = "^3.4.0"
+pycotore = "^0.0.3"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^7.0.0"

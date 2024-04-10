@@ -7,6 +7,8 @@ from pg_logidater.exceptions import (
     DatabaseExists,
     DiskSpaceTooLow
 )
+from pycotore.progress import ProgressBar
+from threading import Event
 
 PG_DUMP_DB = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -U {user} {db}"
 PG_DUMP_SEQ = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -d {db} -U {user} -t {seq_name}"
@@ -71,10 +73,11 @@ def sync_roles(host: str, tmp_path: str, log_dir: str) -> None:
     )
 
 
-def sync_database(host: str, user: str, database: str, tmp_dir: str, log_dir: str) -> None:
+def sync_database(host: str, user: str, database: str, tmp_dir: str, log_dir: str, event: Event) -> None:
     _logger.info(f"Syncing database {database}")
     sync_log = path.join(log_dir, f"sync_{database}.log")
     sync_err_log = path.join(log_dir, f"sync_{database}.err")
+    event.set()
     run_local_cli(
         cli=PG_DUMP_DB.format(db=database, host=host, user=user),
         cli2=PSQL_SQL_PIPE_RESTORE.format(db=database),
@@ -82,6 +85,26 @@ def sync_database(host: str, user: str, database: str, tmp_dir: str, log_dir: st
         err_log=sync_err_log,
         pipe=True
     )
+    event.set()
+
+
+def db_sync_progress_bar(psql: SqlConn, total: float, event: Event, db: str, update_interval: float) -> None:
+    _logger.debug("Startign progress bar function")
+    bar = ProgressBar()
+    suffix = f"{db} sync in progress"
+    bar.set_suffix(suffix)
+    bar.set_total(total)
+    event.wait(timeout=10)
+    _logger.debug("Continue progrss function")
+    event.clear()
+    while True:
+        if event.is_set():
+            break
+        synced_size = psql.get_db_size(db)
+        bar.update_progress(synced_size)
+        bar.draw()
+        event.wait(update_interval)
+    bar.flush_line()
 
 
 def create_subscriber(sub_target: str, database: str, slot_name: str, repl_position: str) -> None:
