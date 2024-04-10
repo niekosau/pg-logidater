@@ -21,26 +21,25 @@ def pause_replica(psql: SqlConn) -> None:
     psql.pause_replica()
 
 
-def replica_info(host, psql: SqlConn, user="postgres") -> (str, str):
+def replica_info(psql: SqlConn, ssh: ServerConn) -> (str, str):
     _logger.info("Collecting replica info")
     pgdata = psql.get_datadirectory()
     psql_version = int(psql.server_version())
     if psql_version not in RECOVYRY_CONF_BY_VERSION.keys():
         raise VersionNotSupported
     recovey_conf = RECOVYRY_CONF_BY_VERSION[psql_version]
-    with ServerConn(host, user) as ssh:
-        auto_conf_name = path.join(pgdata, recovey_conf)
-        cli = f"cat {auto_conf_name}"
-        _logger.debug(f"Executing: {cli}")
-        psql_auto_conf = ssh.run_cmd(cli)
-        for line in reversed(psql_auto_conf.splitlines()):
-            if "application_name" in line:
-                replica_app_name = line.split(" ")[-1].removeprefix("application_name=").strip("'")
-                _logger.debug(f"Got replica app name: {replica_app_name}")
-                break
-        for line in reversed(psql_auto_conf.splitlines()):
-            if "primary_slot_name" in line:
-                replica_slot_name = line.split(" ")[-1].strip("'")
-                _logger.debug(f"Got replica slot name: {replica_slot_name}")
-                break
-        return replica_app_name, replica_slot_name
+    auto_conf_name = path.join(pgdata, recovey_conf)
+    cli = f"cat {auto_conf_name}"
+    _logger.debug(f"Executing: {cli}")
+    psql_auto_conf = ssh.run_cmd(cli)
+    for line in reversed(psql_auto_conf.splitlines()):
+        if "application_name" in line:
+            replica_app_name = line.split(" ")[-1].removeprefix("application_name=").strip("'")
+            _logger.debug(f"Got replica app name: {replica_app_name}")
+            break
+    for line in reversed(psql_auto_conf.splitlines()):
+        if "primary_slot_name" in line:
+            replica_slot_name = line.split(" ")[-1].strip("'")
+            _logger.debug(f"Got replica slot name: {replica_slot_name}")
+            break
+    return replica_app_name, replica_slot_name

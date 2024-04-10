@@ -10,6 +10,7 @@ from pg_logidater.exceptions import (
 )
 from pg_logidater.utils import (
     SqlConn,
+    ServerConn,
     setup_logging,
     prepare_directories
 )
@@ -173,6 +174,11 @@ def setup_replica(args) -> None:
         name=args["repl_name"],
         db_size=db_size
     )
+    with ServerConn(args["replica_host"], args["user"]) as ssh:
+        app_name, slot_name = replica_info(
+            psql=replica_sql,
+            ssh=ssh
+        )
     db_owner = master_prepare(
         psql=master_sql,
         name=args["repl_name"],
@@ -184,10 +190,6 @@ def setup_replica(args) -> None:
         owner=db_owner
     )
     pause_replica(
-        psql=replica_sql
-    )
-    app_name, slot_name = replica_info(
-        host=args["replica_host"],
         psql=replica_sql
     )
     replica_stop_position = get_replica_position(
@@ -338,7 +340,7 @@ def main():
     else:
         if args.saved_conf is not None:
             args_dict = resolve_config(args_dict)
-        drop_privileges(args_dict.pop("user"))
+        drop_privileges(args_dict["user"])
         prepare_directories(args_dict["app_log_dir"], args_dict["app_tmp_dir"])
         args.func(args_dict)
         _logger.info(f"App debug log: {args.save_log}")
