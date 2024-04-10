@@ -7,11 +7,8 @@ PYTHON         = $(or $(wildcard $(VENV_PYTHON)), $(SYSTEM_PYTHON))
 venv:
 	poetry env use python3.9
 
-dev:
-	$(PYTHON) setup.py develop
-
 cleanup:
-	rm -rf build/ dist/
+	sudo rm -rf build/ dist/ .venv/
 
 flake8:
 	$(PYTHON) -m flake8 pg-logidater
