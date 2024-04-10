@@ -32,5 +32,16 @@ run:
 	poetry install
 	sudo ${PYTHON} pg_logidater/cli.py --saved-conf pg_logidater.conf $(args)
 
+drop-setup:
+	sudo ${PYTHON} pg_logidater/cli.py --saved-conf pg_logidater.conf drop-setup
+
+setup-replica:
+	sudo ${PYTHON} pg_logidater/cli.py --saved-conf pg_logidater.conf setup-replica --ignore-pkey --update-interval 0.4
+
 test:
 	twine check dist/*
+
+install:
+	poetry install
+
+resetup: install drop-setup setup-replica
