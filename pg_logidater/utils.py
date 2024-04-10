@@ -26,7 +26,7 @@ class ServerConn(paramiko.SSHClient):
         try:
             self.connect(hostname=self.host, username=self.user)
         except paramiko.ssh_exception.SSHException:
-            _logger.critical(f"Unable connect to {self.host} with user: {self.user}")
+            _logger.critical(f"Unable ssh to {self.host} with user: {self.user}")
             exit(1)
         return self
 
