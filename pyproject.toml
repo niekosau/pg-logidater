@@ -3,7 +3,7 @@ name = "pg-logidater"
 readme = "README.md"
 authors = ["Arunas Grigalionis <arunas.grigalionis@gmail.com>"]
 description = "Postgresql logical replication setup utility"
-version = "0.0.0a7"
+version = "0.3.1"
 license = "GPL-3.0-only"
 homepage = "https://github.com/niekosau"
 repository = "https://github.com/niekosau/pg-logidater"
@@ -16,7 +16,7 @@ pg-logidater = 'pg_logidater.cli:main'
 python = "~3.9"
 psycopg2-binary = "^2.9.9"
 paramiko = "^3.4.0"
-pycotore = "^0.1.0"
+pycotore = "^0.2.0"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^7.0.0"

@@ -7,8 +7,8 @@ from pg_logidater.exceptions import (
     DatabaseExists,
     DiskSpaceTooLow
 )
-from pycotore.progress import ProgressBar
 from threading import Event
+from pycotore import ProgressBar
 
 PG_DUMP_DB = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -U {user} {db}"
 PG_DUMP_SEQ = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -d {db} -U {user} -t {seq_name}"
@@ -92,8 +92,8 @@ def db_sync_progress_bar(psql: SqlConn, total: float, event: Event, db: str, upd
     _logger.debug("Startign progress bar function")
     bar = ProgressBar()
     suffix = f"{db} sync in progress"
-    bar.set_suffix(suffix)
-    bar.set_total(total)
+    bar.suffix = suffix
+    bar.total = total
     event.wait(timeout=10)
     _logger.debug("Continue progrss function")
     event.clear()
@@ -101,12 +101,11 @@ def db_sync_progress_bar(psql: SqlConn, total: float, event: Event, db: str, upd
         if event.is_set():
             break
         synced_size = psql.get_db_size(db)
-        bar.update_progress(synced_size)
+        bar.progress = synced_size
         bar.draw()
         event.wait(update_interval)
-    bar.update_progress(total)
+    bar.update_progress = total
     bar.draw()
-    bar.flush_line()
 
 
 def create_subscriber(sub_target: str, database: str, slot_name: str, repl_position: str) -> None:
