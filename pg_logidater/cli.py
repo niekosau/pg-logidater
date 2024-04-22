@@ -248,7 +248,7 @@ def drop_setup(args) -> None:
     _logger.info("Cleaning target server")
     try:
         target_sql = SqlConn("/tmp", user="postgres", db=args["database"])
-        target_sql.drop_subscriber()
+        target_sql.drop_subscriber(sub_name=args["repl_name"])
         target_sql = SqlConn("/tmp", user="postgres", db="postgres")
         target_sql.drop_database(args["database"])
     except OperationalError as err:

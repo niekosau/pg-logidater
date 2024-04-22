@@ -101,10 +101,9 @@ class SqlConn():
         self.query(sql.SQL_CREATE_SUBSCRIPTION.format(name=name, master=host, db=database, pub_name=name, repl_slot=repl_slot))
         return self.query(sql.SQL_SELECT_SUB_NAME.format(name=name), fetchone=True)[0]
 
-    def drop_subscriber(self, drop_slot: bool = False) -> None:
+    def drop_subscriber(self, sub_name: str, drop_slot: bool = False) -> None:
         self.sql_conn.autocommit = True
         try:
-            sub_name = self.get_db_sub()
             if sub_name:
                 self.disable_subscription(sub_name)
                 if not drop_slot:
