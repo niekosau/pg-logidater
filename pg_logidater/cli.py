@@ -277,7 +277,7 @@ def remove_repl_config(args) -> None:
     try:
         target_sql = SqlConn("/tmp", user="postgres", db=args["database"])
         _logger.debug(f"Dropping subscriber on localhost for db {args['database']}")
-        target_sql.drop_subscriber(drop_slot=True)
+        target_sql.drop_subscriber(drop_slot=True, sub_name=args["repl_name"])
     except OperationalError as err:
         _logger.warning(err)
     master_sql = SqlConn(args["master_host"], user=args["psql_user"], db=args["database"])
