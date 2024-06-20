@@ -188,6 +188,11 @@ def setup_replica(args) -> None:
             psql=replica_sql,
             ssh=ssh
         )
+    sync_roles(
+        host=args["replica_host"],
+        tmp_path=args["app_tmp_dir"],
+        log_dir=args["app_log_dir"],
+    )
     db_owner = master_prepare(
         psql=master_sql,
         name=args["repl_name"],
@@ -204,11 +209,6 @@ def setup_replica(args) -> None:
     replica_stop_position = get_replica_position(
         psql=master_sql,
         app_name=app_name
-    )
-    sync_roles(
-        host=args["replica_host"],
-        tmp_path=args["app_tmp_dir"],
-        log_dir=args["app_log_dir"],
     )
 
     event_finished = Event()
