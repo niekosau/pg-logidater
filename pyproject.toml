@@ -1,36 +1,40 @@
-[tool.poetry]
+[project]
 name = "pg-logidater"
-readme = "README.md"
-authors = ["Arunas Grigalionis <arunas.grigalionis@gmail.com>"]
-description = "Postgresql logical replication setup utility"
 version = "0.3.3"
+description = "Postgresql logical replication setup utility"
+authors = [{ name = "Arunas Grigalionis", email = "arunas.grigalionis@gmail.com" }]
+requires-python = ">=3.9,<3.10"
+readme = "README.md"
 license = "GPL-3.0-only"
-homepage = "https://github.com/niekosau"
-repository = "https://github.com/niekosau/pg-logidater"
 keywords = ["postgres"]
+dependencies = [
+    "psycopg2-binary>=2.9.9,<3",
+    "paramiko>=3.4.0,<4",
+    "pycotore>=0.2.0,<0.3",
+]
 
-[tool.poetry.scripts]
-pg-logidater = 'pg_logidater.cli:main'
+[project.urls]
+Homepage = "https://github.com/niekosau"
+Repository = "https://github.com/niekosau/pg-logidater"
 
-[tool.poetry.dependencies]
-python = "~3.9"
-psycopg2-binary = "^2.9.9"
-paramiko = "^3.4.0"
-pycotore = "^0.2.0"
+[project.scripts]
+pg-logidater = "pg_logidater.cli:main"
 
-[tool.poetry.group.dev.dependencies]
-flake8 = "^7.0.0"
-tox = "^4.14.2"
-pytest = "^8.1.1"
-pytest-cov = "^5.0.0"
-wheel = "^0.43.0"
-poetry = "^1.8.2"
-poetry-git-version-plugin = "^1.0.8"
-twine = "^5.0.0"
+[dependency-groups]
+dev = [
+    "flake8>=7.0.0,<8",
+    "tox>=4.14.2,<5",
+    "pytest>=8.1.1,<9",
+    "pytest-cov>=5.0.0,<6",
+    "wheel>=0.43.0,<0.44",
+    "poetry>=1.8.2,<2",
+    "poetry-git-version-plugin>=1.0.8,<2",
+    "twine>=5.0.0,<6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 addopts = "--cov=pg-logidater"
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
