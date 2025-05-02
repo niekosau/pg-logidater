@@ -28,7 +28,7 @@ FROM
 """
 
 SQL_CREATE_SUBSCRIPTION = """
-CREATE SUBSCRIPTION {name} connection 'host={master} port=5432 dbname={db} user=repmgr'
+CREATE SUBSCRIPTION {name} connection 'host={master} port=5432 dbname={db} user={user}'
 PUBLICATION {pub_name}
 WITH
   (
@@ -113,3 +113,19 @@ WHERE
   AND tc.constraint_name IS NULL
 ORDER BY
   t.table_schema"""
+
+SQL_GET_REPLICA_SLOT_NAME = """
+SELECT
+  slot_name
+FROM
+  pg_replication_slots
+WHERE
+  slot_name NOT LIKE 'barman%'"""
+
+SQL_GET_APPLICATION_NAME = """
+SELECT
+  application_name
+FROM
+  pg_stat_replication
+WHERE
+  application_name NOT LIKE 'barman%'"""

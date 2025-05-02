@@ -167,7 +167,7 @@ def drop_privileges(user) -> None:
 def setup_replica(args) -> None:
     try:
         master_sql = SqlConn(args["master_host"], user=args["psql_user"], db=args["database"])
-        replica_sql = SqlConn(args["replica_host"], args["psql_user"])
+        replica_sql = SqlConn(host=args["replica_host"], user=args["psql_user"])
         target_sql = SqlConn("/tmp", user="postgres", db="postgres")
     except PsqlConnectionError as e:
         _logger.critical(e)
@@ -183,15 +183,15 @@ def setup_replica(args) -> None:
         name=args["repl_name"],
         db_size=db_size
     )
-    with ServerConn(args["replica_host"], args["user"]) as ssh:
-        app_name, slot_name = replica_info(
-            psql=replica_sql,
-            ssh=ssh
-        )
+    slot_name = master_sql.get_replica_slot_name()
+    _logger.debug(f"Got slot name: {slot_name}")
+    app_name = master_sql.get_application_name()
+    _logger.debug(f"Got application name: {app_name}")
     sync_roles(
         host=args["replica_host"],
         tmp_path=args["app_tmp_dir"],
         log_dir=args["app_log_dir"],
+        user=args["psql_user"]
     )
     db_owner = master_prepare(
         psql=master_sql,
@@ -236,7 +236,8 @@ def setup_replica(args) -> None:
        sub_target=args["master_host"],
        database=args["database"],
        slot_name=args["repl_name"],
-       repl_position=replica_stop_position
+       repl_position=replica_stop_position,
+       user=args["psql_user"]
     )
     _logger.info("Rresuming replication")
     replica_sql.resume_replica()
@@ -258,7 +259,7 @@ def drop_setup(args) -> None:
     master_sql.drop_publication(args["repl_name"])
     master_sql.drop_repl_slot(args["repl_name"])
     _logger.info("Cleaning up replica")
-    replica_sql = SqlConn(args["replica_host"], args["psql_user"])
+    replica_sql = SqlConn(host=args["replica_host"], user=args["psql_user"])
     replica_sql.resume_replica()
 
 

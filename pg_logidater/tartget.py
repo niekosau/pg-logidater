@@ -12,7 +12,7 @@ from pycotore import ProgressBar
 
 PG_DUMP_DB = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -U {user} {db}"
 PG_DUMP_SEQ = "/usr/bin/pg_dump --no-publications --no-subscriptions -h {host} -d {db} -U {user} -t {seq_name}"
-PG_DUMP_ROLES = "/usr/bin/pg_dumpall --roles-only -h {host} -U repmgr"
+PG_DUMP_ROLES = "/usr/bin/pg_dumpall --roles-only -h {host} -U {user}"
 PSQL_SQL_RESTORE = "/usr/bin/psql -f {file} -d {db}"
 PSQL_SQL_PIPE_RESTORE = "/usr/bin/psql -d {db}"
 
@@ -53,13 +53,13 @@ def get_replica_position(psql: SqlConn, app_name: str) -> str:
     return psql.get_replay_lsn(app_name)
 
 
-def sync_roles(host: str, tmp_path: str, log_dir: str) -> None:
+def sync_roles(host: str, tmp_path: str, log_dir: str, user: str) -> None:
     _logger.info("Syncing roles")
     roles_dump_path = path.join(tmp_path, "roles.sql")
     roles_dump_err_log = path.join(log_dir, "roles_dump.err")
     _logger.debug(f"Dumping roles to {roles_dump_path}")
     run_local_cli(
-        PG_DUMP_ROLES.format(host=host),
+        PG_DUMP_ROLES.format(host=host, user=user),
         roles_dump_path,
         roles_dump_err_log
     )
@@ -108,14 +108,15 @@ def db_sync_progress_bar(psql: SqlConn, total: float, event: Event, db: str, upd
     bar.draw()
 
 
-def create_subscriber(sub_target: str, database: str, slot_name: str, repl_position: str) -> None:
+def create_subscriber(sub_target: str, database: str, slot_name: str, repl_position: str, user: str) -> None:
     psql = SqlConn("/tmp", user="postgres", db=database)
     _logger.info(f"Creating subsriber to {sub_target}")
     sub_id = psql.create_subscriber(
         name=slot_name,
         host=sub_target,
         database=database,
-        repl_slot=slot_name
+        repl_slot=slot_name,
+        user=user
     )
     psql.enable_subscription(
         sub_name=slot_name,

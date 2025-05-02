@@ -97,8 +97,8 @@ class SqlConn():
             _logger.warning(f"Publication {pub_name} - doesn't exist")
             self.sql_conn.rollback()
 
-    def create_subscriber(self, name, host, database, repl_slot) -> str:
-        self.query(sql.SQL_CREATE_SUBSCRIPTION.format(name=name, master=host, db=database, pub_name=name, repl_slot=repl_slot))
+    def create_subscriber(self, name, host, database, repl_slot, user) -> str:
+        self.query(sql.SQL_CREATE_SUBSCRIPTION.format(name=name, master=host, db=database, pub_name=name, repl_slot=repl_slot, user=user))
         return self.query(sql.SQL_SELECT_SUB_NAME.format(name=name), fetchone=True)[0]
 
     def drop_subscriber(self, sub_name: str, drop_slot: bool = False) -> None:
@@ -205,6 +205,17 @@ class SqlConn():
 
     def analyze(self) -> None:
         self.query(sql.SQL_ANALYZE)
+
+    def get_replica_slot_name(self) -> str:
+        slot_name = self.query(sql.SQL_GET_REPLICA_SLOT_NAME, fetchone=True)
+        if isinstance(slot_name, tuple):
+            return slot_name[0]
+        return False
+    def get_application_name(self) -> str:
+        app_name = self.query(sql.SQL_GET_APPLICATION_NAME, fetchone=True)
+        if isinstance(app_name, tuple):
+            return app_name[0]
+        return False
 
 
 def setup_logging(log_level: str, save_log: str, debug_ssh: bool = False,  log_path: str = None) -> None:
